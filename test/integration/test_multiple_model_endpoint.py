@@ -34,11 +34,11 @@ def volume():
     try:
         model_dir = os.path.join(resource_path, 'models')
         subprocess.check_call(
-            'docker volume create --name dynamic_endpoint_model_volume --opt type=none '
+            'sudo docker volume create --name dynamic_endpoint_model_volume --opt type=none '
             '--opt device={} --opt o=bind'.format(model_dir).split())
         yield model_dir
     finally:
-        subprocess.check_call('docker volume rm dynamic_endpoint_model_volume'.split())
+        subprocess.check_call('sudo docker volume rm dynamic_endpoint_model_volume'.split())
 
 
 @pytest.fixture(scope='session', autouse=True)
@@ -46,21 +46,21 @@ def modulevolume():
     try:
         module_dir = os.path.join(resource_path, 'module')
         subprocess.check_call(
-            'docker volume create --name dynamic_endpoint_module_volume --opt type=none '
+            'sudo docker volume create --name dynamic_endpoint_module_volume --opt type=none '
             '--opt device={} --opt o=bind'.format(module_dir).split())
         yield module_dir
     finally:
-        subprocess.check_call('docker volume rm dynamic_endpoint_module_volume'.split())
+        subprocess.check_call('sudo docker volume rm dynamic_endpoint_module_volume'.split())
 
 
 @pytest.fixture(scope='module', autouse=True)
 def container(request, docker_base_name, tag):
-    test_name = 'sagemaker-sklearn-serving-test'
+    test_name = 'sagemaker-sklearn-serving-test-se'
     module_dir = os.path.join(resource_path, 'module')
     model_dir = os.path.join(resource_path, 'models')
     try:
         command = (
-            'docker run --name {} -p 8080:8080'
+            'sudo docker run --name {} -p 8080:8080'
             # ' --mount type=volume,source=dynamic_endpoint_model_volume,target=/opt/ml/model,readonly'
             # ' --mount type=volume,source=dynamic_endpoint_module_volume,target=/user_module,readonly'
             ' -v {}:/opt/ml/model'
@@ -68,11 +68,11 @@ def container(request, docker_base_name, tag):
             ' -e SAGEMAKER_BIND_TO_PORT=8080'
             ' -e SAGEMAKER_SAFE_PORT_RANGE=9000-9999'
             ' -e SAGEMAKER_MULTI_MODEL=true'
-            ' -e SAGEMAKER_PROGRAM={}'
-            ' -e SAGEMAKER_SUBMIT_DIRECTORY={}'
+            # ' -e SAGEMAKER_PROGRAM={}'
+            # ' -e SAGEMAKER_SUBMIT_DIRECTORY={}'
             ' {}:{} serve'
-        ).format(test_name, model_dir, module_dir, 'script.py', "/user_module/user_code.tar.gz", docker_base_name, tag)
-
+        ).format(test_name, model_dir, module_dir, docker_base_name, tag)
+        print(command)
         proc = subprocess.Popen(command.split(), stdout=sys.stdout, stderr=subprocess.STDOUT)
 
         attempts = 0
@@ -87,7 +87,7 @@ def container(request, docker_base_name, tag):
 
         yield proc.pid
     finally:
-        subprocess.check_call('docker rm -f {}'.format(test_name).split())
+        subprocess.check_call('sudo docker rm -f {}'.format(test_name).split())
 
 
 def make_invocation_request(data, model_name, content_type='text/csv'):

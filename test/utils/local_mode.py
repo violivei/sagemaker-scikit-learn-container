@@ -26,7 +26,7 @@ import boto3
 from botocore.exceptions import ClientError
 import requests
 from sagemaker import fw_utils, utils
-from sagemaker_containers.beta.framework import content_types, encoders
+from sagemaker_inference import content_types, decoder, encoder
 import yaml
 
 CYAN_COLOR = '\033[36m'
@@ -619,10 +619,10 @@ def get_model_dir(resource_folder, host='algo-1'):
 
 
 def request(data, content_type=content_types.JSON):
-    data = encoders.encode(data, content_type)
+    data = encoder.encode(data, content_type)
     headers = {'Content-type': content_type, 'Accept': content_type}
     response = requests.post(REQUEST_URL, data=data, headers=headers)
 
     data = response.text if content_type in content_types.UTF8_TYPES else response.content
 
-    return encoders.decode(data, content_type)
+    return decoder.decode(data, content_type)

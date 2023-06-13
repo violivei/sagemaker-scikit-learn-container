@@ -13,6 +13,8 @@
 from __future__ import absolute_import
 import numpy as np
 import textwrap
+from joblib import load
+import os
 
 from sagemaker_inference import content_types, decoder, default_inference_handler, encoder
 from sagemaker_inference.default_handler_service import DefaultHandlerService
@@ -38,10 +40,7 @@ class HandlerService(DefaultHandlerService):
                 model_dir: a directory where model is saved.
             Returns: A Scikit-learn model.
             """
-            raise NotImplementedError(textwrap.dedent("""
-            Please provide a model_fn implementation.
-            See documentation for model_fn at https://github.com/aws/sagemaker-python-sdk
-            """))
+            return load(os.path.join(model_dir, "sklearn-model"))
 
         @staticmethod
         def default_input_fn(input_data, content_type):

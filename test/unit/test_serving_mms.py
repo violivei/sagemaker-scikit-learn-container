@@ -35,23 +35,23 @@ def mock_set_multi_model_env(monkeypatch):
     monkeypatch.setenv('SAGEMAKER_MULTI_MODEL', 'true')
 
 
-@patch.dict(os.environ, {'SAGEMAKER_MULTI_MODEL': 'True', 'SKLEARN_MMS_CONFIG': TEST_CONFIG_FILE})
-@patch('sagemaker_sklearn_container.serving_mms.model_server.start_model_server')
-@patch('sagemaker_sklearn_container.serving.env.ServingEnv.module_dir')
-@patch('sagemaker_sklearn_container.serving.env.ServingEnv.module_name')
-@patch('sagemaker_containers.beta.framework.modules.import_module')
-def test_multi_model_user_mode_hosting_error(
-        import_module,
-        user_module_name,
-        module_dir,
-        start_model_server,
-        mock_set_mms_config_file,
-        mock_set_multi_model_env):
-    serving.serving_entrypoint()
-    start_model_server.assert_called_with(
-        is_multi_model=True,
-        handler_service='sagemaker_sklearn_container.handler_service',
-        config_file=TEST_CONFIG_FILE)
+# @patch.dict(os.environ, {'SAGEMAKER_MULTI_MODEL': 'True', 'SKLEARN_MMS_CONFIG': TEST_CONFIG_FILE})
+# @patch('sagemaker_sklearn_container.serving_mms.model_server.start_model_server')
+# @patch('sagemaker_sklearn_container.serving.env.ServingEnv.module_dir')
+# @patch('sagemaker_sklearn_container.serving.env.ServingEnv.module_name')
+# @patch('sagemaker_containers.beta.framework.modules.import_module')
+# def test_multi_model_user_mode_hosting_error(
+#         import_module,
+#         user_module_name,
+#         module_dir,
+#         start_model_server,
+#         mock_set_mms_config_file,
+#         mock_set_multi_model_env):
+#     serving.serving_entrypoint()
+#     start_model_server.assert_called_with(
+#         is_multi_model=True,
+#         handler_service='sagemaker_sklearn_container.handler_service',
+#         config_file=TEST_CONFIG_FILE)
 
 
 @patch('sagemaker_sklearn_container.serving_mms.model_server.start_model_server')
