@@ -21,8 +21,6 @@ import sagemaker_inference
 from retrying import retry
 from subprocess import CalledProcessError
 
-from sagemaker_containers.beta.framework import env, modules
-
 from sagemaker_sklearn_container import handler_service
 from sagemaker_sklearn_container.mms_patch import model_server
 
@@ -116,10 +114,5 @@ def _set_mms_configs(is_multi_model, handler):
     except Exception:
         pass
 
-
-def start_model_server():
-    serving_env = env.ServingEnv()
-    is_multi_model = True
-
-    modules.import_module(serving_env.module_dir, serving_env.module_name)
+def start_model_server(is_multi_model):
     _start_model_server(is_multi_model, HANDLER_SERVICE)

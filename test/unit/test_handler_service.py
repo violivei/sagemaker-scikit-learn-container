@@ -19,10 +19,8 @@ import pytest
 from sagemaker_inference import (content_types, encoder, errors)
 from sklearn.base import BaseEstimator
 
-from sagemaker_sklearn_container.handler_service import HandlerService
-
-
-handler = HandlerService().DefaultSKLearnUserModuleInferenceHandler()
+from sagemaker_sklearn_container import handler_service
+handler = handler_service.HandlerService().DefaultSKLearnUserModuleInferenceHandler()
 
 
 @pytest.fixture(scope='module', name='np_array')
@@ -88,7 +86,7 @@ def test_input_fn_bad_content_type():
 
 
 def test_default_model_fn():
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(FileNotFoundError):
         handler.default_model_fn('model_dir')
 
 

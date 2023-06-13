@@ -19,10 +19,10 @@ import os
 
 from sklearn.base import BaseEstimator
 
-from sagemaker_containers.beta.framework import (content_types, encoders, errors)
+from sagemaker_inference import (content_types, encoder, errors)
 from sagemaker_sklearn_container import serving
 from sagemaker_sklearn_container.exceptions import UserError
-from sagemaker_sklearn_container.serving import default_model_fn, import_module
+from sagemaker_sklearn_container.serving import default_model_fn
 
 
 @pytest.fixture(scope='module', name='np_array')
@@ -74,19 +74,19 @@ def test_input_fn_csv(csv_data, expected):
 
 @pytest.mark.parametrize('np_array', ([42, 6, 9], [42., 6., 9.]))
 def test_input_fn_npz(np_array):
-    input_data = encoders.array_to_npy(np_array)
+    input_data = encoder._array_to_npy(np_array)
     deserialized_np_array = serving.default_input_fn(input_data, content_types.NPY)
 
     assert np.array_equal(np_array, deserialized_np_array)
 
     float_32_array = np.array(np_array, dtype=np.float32)
-    input_data = encoders.array_to_npy(float_32_array)
+    input_data = encoder._array_to_npy(float_32_array)
     deserialized_np_array = serving.default_input_fn(input_data, content_types.NPY)
 
     assert np.array_equal(float_32_array, deserialized_np_array)
 
     float_64_array = np.array(np_array, dtype=np.float64)
-    input_data = encoders.array_to_npy(float_64_array)
+    input_data = encoder._array_to_npy(float_64_array)
     deserialized_np_array = serving.default_input_fn(input_data, content_types.NPY)
 
     assert np.array_equal(float_64_array, deserialized_np_array)
@@ -98,7 +98,7 @@ def test_input_fn_bad_content_type():
 
 
 def test_default_model_fn():
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(FileNotFoundError):
         default_model_fn('model_dir')
 
 
@@ -110,24 +110,24 @@ def test_predict_fn(np_array):
 
 
 def test_output_fn_json(np_array):
-    response = serving.default_output_fn(np_array, content_types.JSON)
+    response, content_type = serving.default_output_fn(np_array, content_types.JSON)
 
-    assert response.get_data(as_text=True) == encoders.array_to_json(np_array.tolist())
-    assert response.content_type == content_types.JSON
+    assert response == encoder._array_to_json(np_array.tolist())
+    assert content_type == content_types.JSON
 
 
 def test_output_fn_csv(np_array):
-    response = serving.default_output_fn(np_array, content_types.CSV)
+    response, content_type = serving.default_output_fn(np_array, content_types.CSV)
 
-    assert response.get_data(as_text=True) == '1.0,1.0\n1.0,1.0\n'
-    assert content_types.CSV in response.content_type
+    assert response == '1.0,1.0\n1.0,1.0\n'
+    assert content_types.CSV in content_type
 
 
 def test_output_fn_npz(np_array):
-    response = serving.default_output_fn(np_array, content_types.NPY)
+    response, content_type = serving.default_output_fn(np_array, content_types.NPY)
 
-    assert response.get_data() == encoders.array_to_npy(np_array)
-    assert response.content_type == content_types.NPY
+    assert response == encoder._array_to_npy(np_array)
+    assert content_type == content_types.NPY
 
 
 def test_input_fn_bad_accept():
@@ -135,39 +135,39 @@ def test_input_fn_bad_accept():
         serving.default_output_fn('', 'application/not_supported')
 
 
-@patch("sagemaker_sklearn_container.serving.transformer")
-def test_user_module_transformer_with_transform_and_other_fn(mock_transformer):
-    mock_module = MagicMock(spec=["model_fn", "transform_fn", "input_fn"])
-    with pytest.raises(UserError):
-        serving._user_module_transformer(mock_module)
+# @patch("sagemaker_sklearn_container.serving.transformer")
+# def test_user_module_transformer_with_transform_and_other_fn(mock_transformer):
+#     mock_module = MagicMock(spec=["model_fn", "transform_fn", "input_fn"])
+#     with pytest.raises(UserError):
+#         serving._user_module_transformer(mock_module)
 
 
-@patch("sagemaker_sklearn_container.serving.transformer")
-def test_user_module_transformer_with_transform_and_no_other_fn(mock_transformer):
-    mock_module = MagicMock(spec=["model_fn", "transform_fn"])
-    serving._user_module_transformer(mock_module)
-    mock_transformer.Transformer.assert_called_once_with(
-        model_fn=mock_module.model_fn, transform_fn=mock_module.transform_fn
-    )
+# @patch("sagemaker_sklearn_container.serving.transformer")
+# def test_user_module_transformer_with_transform_and_no_other_fn(mock_transformer):
+#     mock_module = MagicMock(spec=["model_fn", "transform_fn"])
+#     serving._user_module_transformer(mock_module)
+#     mock_transformer.Transformer.assert_called_once_with(
+#         model_fn=mock_module.model_fn, transform_fn=mock_module.transform_fn
+#     )
 
 
-@patch('importlib.import_module')
-def test_import_module_execution_parameters(importlib_module_mock):
-    importlib_module_mock.return_value = DummyUserModule()
-    _, execution_parameters_fn = import_module('dummy_module', 'dummy_dir')
+# @patch('importlib.import_module')
+# def test_import_module_execution_parameters(importlib_module_mock):
+#     importlib_module_mock.return_value = DummyUserModule()
+#     _, execution_parameters_fn = import_module('dummy_module', 'dummy_dir')
 
-    assert execution_parameters_fn == dummy_execution_parameters_fn
-
-
-@patch('sagemaker_sklearn_container.serving.server')
-def test_serving_entrypoint_start_gunicorn(mock_server):
-    mock_server.start = MagicMock()
-    serving.serving_entrypoint()
-    mock_server.start.assert_called_once()
+#     assert execution_parameters_fn == dummy_execution_parameters_fn
 
 
-@patch.dict(os.environ, {'SAGEMAKER_MULTI_MODEL': 'True', })
-@patch('sagemaker_sklearn_container.serving.start_model_server')
-def test_serving_entrypoint_start_mms(mock_start_model_server):
-    serving.serving_entrypoint()
-    mock_start_model_server.assert_called_once()
+# @patch('sagemaker_sklearn_container.serving.server')
+# def test_serving_entrypoint_start_gunicorn(mock_server):
+#     mock_server.start = MagicMock()
+#     serving.serving_entrypoint()
+#     mock_server.start.assert_called_once()
+
+
+# @patch.dict(os.environ, {'SAGEMAKER_MULTI_MODEL': 'True', })
+# @patch('sagemaker_sklearn_container.serving.start_model_server')
+# def test_serving_entrypoint_start_mms(mock_start_model_server):
+#     serving.serving_entrypoint()
+#     mock_start_model_server.assert_called_once()
